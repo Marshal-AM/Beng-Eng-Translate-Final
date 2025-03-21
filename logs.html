@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Bot Logs - Sensei Translator</title>
+    <style>
+        :root {
+            --primary-color: #e60000;
+            --primary-hover: #b30000;
+            --secondary-color: #1a1a1a;
+            --secondary-hover: #333333;
+            --light-bg: #222222;
+            --dark-text: #f0f0f0;
+            --light-text: #fff;
+            --gray-text: #aaaaaa;
+            --success-color: #00cc66;
+            --warning-color: #ff9900;
+            --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #000000 0%, #333333 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--dark-text);
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 90%;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: #121212;
+            border-radius: 1rem;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, var(--primary-color), #ff3333);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--gray-text);
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            padding: 0.8rem 2rem;
+            border-radius: 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            border: none;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            margin: 0 0.5rem;
+        }
+
+        .btn-refresh {
+            background-color: var(--primary-color);
+            color: var(--light-text);
+        }
+
+        .btn-refresh:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-back {
+            background-color: var(--secondary-color);
+            color: var(--light-text);
+        }
+
+        .btn-back:hover {
+            background-color: var(--secondary-hover);
+            transform: translateY(-2px);
+        }
+
+        .logs-container {
+            margin-top: 1.5rem;
+            text-align: left;
+            max-height: 60vh;
+            overflow-y: auto;
+            border-radius: 0.5rem;
+            background-color: #0a0a0a;
+            padding: 1rem;
+        }
+
+        .logs {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--dark-text);
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+
+        .log-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .log-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 0.3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stderr-header {
+            background-color: rgba(230, 0, 0, 0.2);
+            color: var(--primary-color);
+        }
+
+        .stdout-header {
+            background-color: rgba(0, 204, 102, 0.2);
+            color: var(--success-color);
+        }
+
+        .log-line {
+            margin: 0;
+            padding: 0.2rem 0.5rem;
+            border-left: 3px solid transparent;
+        }
+
+        .stderr .log-line {
+            border-left-color: var(--primary-color);
+        }
+
+        .stdout .log-line {
+            border-left-color: var(--success-color);
+        }
+
+        .controls {
+            margin: 1.5rem 0;
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1rem;
+            color: var(--gray-text);
+        }
+
+        .last-updated {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--gray-text);
+        }
+
+        footer {
+            margin-top: auto;
+            padding: 1rem;
+            color: var(--gray-text);
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 95%;
+                padding: 1.5rem;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .logs {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Bot Logs</h1>
+            <p class="subtitle">Real-time logs from the running bot process</p>
+        </header>
+
+        <div class="controls">
+            <button id="refreshBtn" class="btn btn-refresh">
+                <i class="fas fa-sync-alt"></i>
+                Refresh Logs
+            </button>
+            <a href="/" class="btn btn-back">
+                <i class="fas fa-arrow-left"></i>
+                Back to Translator
+            </a>
+        </div>
+
+        <div class="auto-refresh">
+            <label>
+                <input type="checkbox" id="autoRefresh" checked> Auto-refresh logs (every 3s)
+            </label>
+        </div>
+
+        <div class="logs-container">
+            <div class="log-section">
+                <div class="log-header stderr-header">
+                    <span>Error Log (stderr)</span>
+                    <span id="stderrCount">0 lines</span>
+                </div>
+                <div id="stderr" class="logs stderr"></div>
+            </div>
+            
+            <div class="log-section">
+                <div class="log-header stdout-header">
+                    <span>Standard Output (stdout)</span>
+                    <span id="stdoutCount">0 lines</span>
+                </div>
+                <div id="stdout" class="logs stdout"></div>
+            </div>
+        </div>
+
+        <div class="last-updated">
+            Last updated: <span id="lastUpdated">Never</span>
+        </div>
+    </div>
+
+    <footer>
+        Powered by Nitrane Systems
+    </footer>
+
+    <script>
+        const refreshBtn = document.getElementById('refreshBtn');
+        const stderrElement = document.getElementById('stderr');
+        const stdoutElement = document.getElementById('stdout');
+        const stderrCountElement = document.getElementById('stderrCount');
+        const stdoutCountElement = document.getElementById('stdoutCount');
+        const lastUpdatedElement = document.getElementById('lastUpdated');
+        const autoRefreshCheckbox = document.getElementById('autoRefresh');
+        
+        let autoRefreshInterval = null;
+        
+        // Format date as a readable string
+        function formatDate(date) {
+            return date.toLocaleTimeString() + ' ' + date.toLocaleDateString();
+        }
+        
+        // Fetch logs from the server
+        async function fetchLogs() {
+            try {
+                const response = await fetch('/bot-logs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update stderr
+                    stderrElement.innerHTML = '';
+                    data.stderr.forEach(line => {
+                        const p = document.createElement('p');
+                        p.className = 'log-line';
+                        p.textContent = line;
+                        stderrElement.appendChild(p);
+                    });
+                    stderrCountElement.textContent = `${data.stderr.length} lines`;
+                    
+                    // Update stdout
+                    stdoutElement.innerHTML = '';
+                    data.stdout.forEach(line => {
+                        const p = document.createElement('p');
+                        p.className = 'log-line';
+                        p.textContent = line;
+                        stdoutElement.appendChild(p);
+                    });
+                    stdoutCountElement.textContent = `${data.stdout.length} lines`;
+                    
+                    // Update last updated time
+                    lastUpdatedElement.textContent = formatDate(new Date());
+                    
+                    // Scroll to bottom of logs
+                    stderrElement.scrollTop = stderrElement.scrollHeight;
+                    stdoutElement.scrollTop = stdoutElement.scrollHeight;
+                } else {
+                    stderrElement.innerHTML = '<p class="log-line">No error logs available</p>';
+                    stdoutElement.innerHTML = '<p class="log-line">No standard output logs available</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching logs:', error);
+                stderrElement.innerHTML = `<p class="log-line">Error fetching logs: ${error.message}</p>`;
+            }
+        }
+        
+        // Toggle auto-refresh
+        function toggleAutoRefresh() {
+            if (autoRefreshCheckbox.checked) {
+                autoRefreshInterval = setInterval(fetchLogs, 3000);
+            } else {
+                clearInterval(autoRefreshInterval);
+            }
+        }
+        
+        // Add event listeners
+        refreshBtn.addEventListener('click', fetchLogs);
+        autoRefreshCheckbox.addEventListener('change', toggleAutoRefresh);
+        
+        // Load logs on page load
+        fetchLogs();
+        toggleAutoRefresh();
+    </script>
+</body>
+</html> 

@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.X.X/dist/protobuf.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Voice Translator</title>
+    <style>
+      :root {
+        --primary-color: #e60000;
+        --primary-hover: #b30000;
+        --secondary-color: #1a1a1a;
+        --secondary-hover: #333333;
+        --light-bg: #222222;
+        --dark-text: #f0f0f0;
+        --light-text: #fff;
+        --gray-text: #aaaaaa;
+        --success-color: #00cc66;
+        --warning-color: #ff9900;
+        --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+      }
+
+      body {
+        font-family: 'Poppins', sans-serif;
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #000000 0%, #333333 100%);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: var(--dark-text);
+      }
+
+      .container {
+        max-width: 800px;
+        width: 90%;
+        margin: 2rem auto;
+        padding: 2rem;
+        background-color: #121212;
+        border-radius: 1rem;
+        box-shadow: var(--card-shadow);
+        text-align: center;
+      }
+
+      header {
+        margin-bottom: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .logo {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        position: relative;
+        overflow: hidden;
+        border-radius: 10px;
+        background-color: #000;
+      }
+
+      .logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      h1 {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(90deg, var(--primary-color), #ff3333);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .subtitle {
+        font-size: 1.1rem;
+        color: var(--gray-text);
+        margin-bottom: 1.5rem;
+      }
+
+      .language-display {
+        display: flex;
+        justify-content: space-around;
+        margin: 1.5rem 0;
+        padding: 1rem;
+        background-color: var(--light-bg);
+        border-radius: 0.8rem;
+      }
+
+      .language-pill {
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+
+      .from-lang {
+        background-color: rgba(230, 0, 0, 0.2);
+        color: var(--primary-color);
+        border: 1px solid var(--primary-color);
+      }
+
+      .to-lang {
+        background-color: rgba(26, 26, 26, 0.4);
+        color: var(--light-text);
+        border: 1px solid #444444;
+      }
+
+      .status-indicator {
+        margin: 1.5rem 0;
+        padding: 1rem;
+        border-radius: 0.8rem;
+        background-color: var(--light-bg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: all 0.3s ease;
+      }
+
+      .indicator-text {
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+      }
+
+      .indicator-dots {
+        display: flex;
+        gap: 0.3rem;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: var(--gray-text);
+      }
+
+      .status-indicator.idle {
+        background-color: var(--light-bg);
+      }
+
+      .status-indicator.listening {
+        background-color: rgba(230, 0, 0, 0.2);
+      }
+
+      .status-indicator.translating {
+        background-color: rgba(26, 26, 26, 0.6);
+      }
+
+      .status-indicator.speaking {
+        background-color: rgba(0, 204, 102, 0.2);
+      }
+
+      .status-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .idle .status-icon {
+        color: var(--gray-text);
+      }
+
+      .listening .status-icon {
+        color: var(--primary-color);
+      }
+
+      .translating .status-icon {
+        color: var(--light-text);
+      }
+
+      .speaking .status-icon {
+        color: var(--success-color);
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 0.5;
+          transform: scale(0.95);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.05);
+        }
+        100% {
+          opacity: 0.5;
+          transform: scale(0.95);
+        }
+      }
+
+      .listening .status-icon,
+      .translating .dot,
+      .speaking .status-icon {
+        animation: pulse 1.5s infinite;
+      }
+
+      .controls {
+        display: flex;
+        justify-content: center;
+        gap: 1.5rem;
+        margin-top: 2rem;
+      }
+
+      .btn {
+        padding: 0.8rem 2rem;
+        border-radius: 2rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        border: none;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .btn-start {
+        background-color: var(--primary-color);
+        color: var(--light-text);
+      }
+
+      .btn-start:hover:not(:disabled) {
+        background-color: var(--primary-hover);
+        transform: translateY(-2px);
+      }
+
+      .btn-stop {
+        background-color: var(--secondary-color);
+        color: var(--light-text);
+      }
+
+      .btn-stop:hover:not(:disabled) {
+        background-color: var(--secondary-hover);
+        transform: translateY(-2px);
+      }
+
+      .loading-animation {
+        margin: 1rem auto;
+      }
+
+      .loading-animation i {
+        font-size: 2rem;
+        color: var(--primary-color);
+        animation: spin 2s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .fadeIn {
+        opacity: 0;
+        animation: fadeIn 0.5s forwards;
+      }
+
+      @keyframes fadeIn {
+        to {
+          opacity: 1;
+        }
+      }
+
+      footer {
+        margin-top: auto;
+        padding: 1rem;
+        color: var(--gray-text);
+        font-size: 0.85rem;
+        text-align: center;
+      }
+
+      @media (max-width: 600px) {
+        .container {
+          width: 95%;
+          padding: 1.5rem;
+        }
+
+        h1 {
+          font-size: 1.8rem;
+        }
+
+        .controls {
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .btn {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container fadeIn">
+      <header>
+        <div class="logo">
+          <img src="logo.jpeg" alt="Sensei Translator Logo - Red cube design">
+        </div>
+        <h1>Sensei Translator</h1>
+        <p class="subtitle">Speak in Bengali</p>
+      </header>
+
+      <div class="language-display">
+        <div class="language-pill from-lang">Bengali</div>
+        <i class="fas fa-arrow-right" style="color: var(--gray-text);"></i>
+        <div class="language-pill to-lang">English</div>
+      </div>
+
+      <div id="statusIndicator" class="status-indicator idle">
+        <i id="statusIcon" class="status-icon fas fa-headphones-alt"></i>
+        <div id="progressText" class="indicator-text">Loading, please wait...</div>
+        <div class="indicator-dots">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="startAudioBtn" class="btn btn-start" disabled>
+          <i class="fas fa-microphone"></i>
+          Start Speaking
+        </button>
+        <button id="stopAudioBtn" class="btn btn-stop" disabled>
+          <i class="fas fa-stop-circle"></i>
+          Stop
+        </button>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin: 1rem auto;">
+      <a href="/logs.html" target="_blank" style="color: var(--gray-text); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: color 0.3s ease;">
+        <i class="fas fa-file-alt"></i>
+        View Bot Logs
+      </a>
+    </div>
+
+    <footer>
+      Powered by Nitrane Systems
+    </footer>
+
+    <script>
+      const SAMPLE_RATE = 16000;
+      const NUM_CHANNELS = 1;
+      const PLAY_TIME_RESET_THRESHOLD_MS = 1.0;
+
+      // The protobuf type. We will load it later.
+      let Frame = null;
+
+      // The websocket connection.
+      let socket = null;
+
+      // The audio context
+      let audioContext = null;
+
+      // The audio context media stream source
+      let source = null;
+
+      // The microphone stream from getUserMedia. SHould be sampled to the
+      // proper sample rate.
+      let microphoneStream = null;
+
+      // Script processor to get data from microphone.
+      let scriptProcessor = null;
+
+      // AudioContext play time.
+      let playTime = 0;
+
+      // Last time we received a websocket message.
+      let lastMessageTime = 0;
+
+      // Whether we should be playing audio.
+      let isPlaying = false;
+
+      // Are we currently speaking
+      let isSpeaking = false;
+
+      // Are we listening to the user
+      let isListening = false;
+
+      // Is translation in progress
+      let isTranslating = false;
+      
+      // Debounce timers to prevent flickering
+      let statusChangeTimer = null;
+      let speakingEndTimer = null;
+      
+      // Heartbeat mechanism to prevent Google STT timeouts
+      let heartbeatInterval = null;
+      const HEARTBEAT_INTERVAL_MS = 10000; // Send heartbeat every 10 seconds
+      
+      // Minimum time (ms) to stay in a state before changing
+      const MIN_STATE_DURATION = 1000;
+
+      let startBtn = document.getElementById('startAudioBtn');
+      let stopBtn = document.getElementById('stopAudioBtn');
+      let statusIndicator = document.getElementById('statusIndicator');
+      let statusIcon = document.getElementById('statusIcon');
+      let progressText = document.getElementById('progressText');
+
+      let botPid = null; // Store the bot process ID
+
+      // Add retry logic for WebSocket connection
+      let retryCount = 0;
+      const MAX_RETRIES = 3;
+
+      // Audio playback variables
+      let audioQueue = [];
+      let isAudioPlaying = false;
+      let audioSequence = 0; // Track sequence for debugging
+      
+      // Simple high-quality audio playback system
+      let lastAudioEndTime = 0;
+      let audioPlaybackActive = false;
+      let userStartedSpeaking = false;
+
+      function updateStatus(status, message) {
+        // Clear any pending status changes
+        if (statusChangeTimer) {
+          clearTimeout(statusChangeTimer);
+        }
+        
+        const updateStatusNow = () => {
+          // Reset all states
+          statusIndicator.classList.remove('idle', 'listening', 'translating', 'speaking');
+          
+          if (status === 'idle') {
+            statusIndicator.classList.add('idle');
+            statusIcon.className = 'status-icon fas fa-headphones-alt';
+            progressText.textContent = message || 'Ready to translate';
+            isListening = false;
+            isTranslating = false;
+            isSpeaking = false;
+          } else if (status === 'listening') {
+            // Only change to listening if we're not currently speaking
+            if (!isSpeaking) {
+              statusIndicator.classList.add('listening');
+              statusIcon.className = 'status-icon fas fa-microphone';
+              progressText.textContent = message || 'Listening...';
+              isListening = true;
+              isTranslating = false;
+            }
+          } else if (status === 'translating') {
+            statusIndicator.classList.add('translating');
+            statusIcon.className = 'status-icon fas fa-language';
+            progressText.textContent = message || 'Translating...';
+            isListening = false;
+            isTranslating = true;
+            isSpeaking = false;
+          } else if (status === 'speaking') {
+            // Cancel any pending transition back to listening
+            if (speakingEndTimer) {
+              clearTimeout(speakingEndTimer);
+              speakingEndTimer = null;
+            }
+            
+            statusIndicator.classList.add('speaking');
+            statusIcon.className = 'status-icon fas fa-volume-up';
+            progressText.textContent = message || 'Speaking...';
+            isListening = false;
+            isTranslating = false;
+            isSpeaking = true;
+          } else if (status === 'loading') {
+            statusIndicator.classList.add('idle');
+            statusIcon.className = 'status-icon fas fa-spinner fa-spin';
+            progressText.textContent = message || 'Loading, please wait...';
+            isListening = false;
+            isTranslating = false;
+            isSpeaking = false;
+          } else if (status === 'connecting') {
+            statusIndicator.classList.add('idle');
+            statusIcon.className = 'status-icon fas fa-plug fa-spin';
+            progressText.textContent = message || 'Connecting...';
+            isListening = false;
+            isTranslating = false;
+            isSpeaking = false;
+          } else if (status === 'error') {
+            statusIndicator.classList.add('idle');
+            statusIcon.className = 'status-icon fas fa-exclamation-triangle';
+            progressText.textContent = message || 'Error occurred';
+            isListening = false;
+            isTranslating = false;
+            isSpeaking = false;
+          }
+        };
+        
+        // If this is a high-priority state, update now
+        if (status === 'loading' || status === 'idle' || status === 'error' || status === 'connecting') {
+          updateStatusNow();
+        } else {
+          // Otherwise, debounce the status change
+          statusChangeTimer = setTimeout(updateStatusNow, 100); // Short delay to prevent flickering
+        }
+      }
+
+      const proto = protobuf.load('frames.proto', (err, root) => {
+          if (err) {
+              throw err;
+          }
+          Frame = root.lookupType('pipecat.Frame');
+        updateStatus('idle');
+
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+      });
+
+      function retryWebSocketConnection() {
+        if (retryCount < MAX_RETRIES) {
+          retryCount++;
+          console.log(`Retrying WebSocket connection (attempt ${retryCount} of ${MAX_RETRIES})...`);
+          
+          // Wait before retrying
+          setTimeout(() => {
+            if (botPid) { // Only retry if we still have a bot process
+              updateStatus('connecting', `Reconnecting (attempt ${retryCount})...`);
+              initWebSocket();
+            }
+          }, 2000);
+        } else {
+          console.error('Max WebSocket connection retries reached');
+          updateStatus('error', 'Failed to connect after multiple attempts. Please stop and try again.');
+          
+          // Stop the bot process since we couldn't connect
+          if (botPid) {
+            stopRecording().catch(error => {
+              console.error("Failed to stop bot server after connection failures:", error);
+            });
+          }
+        }
+      }
+
+      // Reset retry count when we start a new recording session
+      function resetRetryCount() {
+        retryCount = 0;
+      }
+
+      function initWebSocket() {
+        console.log("Connecting to WebSocket at ws://localhost:8765");
+        socket = new WebSocket('ws://localhost:8765');
+          // This is so `event.data` is already an ArrayBuffer.
+        socket.binaryType = 'arraybuffer';
+
+        socket.addEventListener('open', handleWebSocketOpen);
+        socket.addEventListener('message', handleWebSocketMessage);
+        socket.addEventListener('close', (event) => {
+              console.log('WebSocket connection closed.', event.code, event.reason);
+              stopAudio(false);
+          updateStatus('idle');
+        });
+        socket.addEventListener('error', (event) => {
+          console.error('WebSocket error:', event);
+          
+          // More detailed error feedback
+          if (socket.readyState === WebSocket.CONNECTING) {
+            console.error('Failed to connect to WebSocket server. Is the bot running?');
+            updateStatus('error', 'Failed to connect to the translation service. Server may not be running.');
+          } else if (socket.readyState === WebSocket.CLOSING || socket.readyState === WebSocket.CLOSED) {
+            console.error('WebSocket connection closed unexpectedly');
+            updateStatus('error', 'WebSocket connection closed unexpectedly');
+          }
+          
+          // Attempt to reconnect after a short delay
+          retryWebSocketConnection();
+        });
+        
+        // Start heartbeat to prevent Google STT timeouts
+        startHeartbeat();
+      }
+
+      function handleWebSocketOpen(event) {
+        console.log('WebSocket connection established.', event);
+        updateStatus('listening');
+        
+        // Enable stop button and disable start button
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+
+        navigator.mediaDevices.getUserMedia({
+              audio: {
+                  sampleRate: SAMPLE_RATE,
+                  channelCount: NUM_CHANNELS,
+                  autoGainControl: true,
+                  echoCancellation: true,
+                  noiseSuppression: true,
+              }
+          }).then((stream) => {
+              microphoneStream = stream;
+              // 512 is closest thing to 200ms.
+              scriptProcessor = audioContext.createScriptProcessor(512, 1, 1);
+              source = audioContext.createMediaStreamSource(stream);
+              source.connect(scriptProcessor);
+              scriptProcessor.connect(audioContext.destination);
+
+              scriptProcessor.onaudioprocess = (event) => {
+            if (!socket) {
+                      return;
+                  }
+
+                  const audioData = event.inputBuffer.getChannelData(0);
+                  const pcmS16Array = convertFloat32ToS16PCM(audioData);
+                  const pcmByteArray = new Uint8Array(pcmS16Array.buffer);
+                  const frame = Frame.create({
+                      audio: {
+                          audio: Array.from(pcmByteArray),
+                          sampleRate: SAMPLE_RATE,
+                          numChannels: NUM_CHANNELS
+                      }
+                  });
+                  const encodedFrame = new Uint8Array(Frame.encode(frame).finish());
+            socket.send(encodedFrame);
+          };
+        }).catch((error) => {
+          console.error('Error accessing microphone:', error);
+          updateStatus('error', 'Failed to access microphone');
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+        });
+      }
+
+      function handleWebSocketMessage(event) {
+          const arrayBuffer = event.data;
+        logAudioEvent("Received WebSocket message", { 
+          size: arrayBuffer.byteLength,
+          isPlaying: isPlaying
+        });
+        
+          if (isPlaying) {
+          try {
+            // Decode the protobuf frame
+            const parsedFrame = Frame.decode(new Uint8Array(arrayBuffer));
+            
+            // Verify we have audio data
+            if (!parsedFrame?.audio || !parsedFrame.audio.audio) {
+              logAudioEvent("No audio data in frame");
+              return;
+            }
+            
+            audioSequence++;
+            
+            // If we received an audio message back, it means translation is happening
+            // First time we get a response, switch from listening to translating
+            if (!userStartedSpeaking) {
+              updateStatus('translating');
+              userStartedSpeaking = true;
+            }
+            
+            // Update status to speaking if not already
+            if (!audioPlaybackActive) {
+              updateStatus('speaking');
+              audioPlaybackActive = true;
+            }
+            
+            // Extract the audio data directly from the protobuf
+            const audioData = new Uint8Array(parsedFrame.audio.audio);
+            
+            // Play the audio with high fidelity
+            playHighFidelityAudio(audioData.buffer);
+            
+          } catch (error) {
+            logAudioEvent("Error processing message", { error: error.message });
+          }
+        }
+      }
+      
+      // Simple and direct high-quality audio playback
+      function playHighFidelityAudio(audioBuffer) {
+        try {
+          // Make sure the audio context is running
+          if (audioContext.state !== 'running') {
+            audioContext.resume().catch(err => {
+              logAudioEvent("Failed to resume audio context", { error: err.message });
+            });
+          }
+          
+          // Create a new ArrayBuffer to avoid any potential memory issues
+          const cleanBuffer = audioBuffer.slice(0);
+          
+          // Decode the audio data directly
+          audioContext.decodeAudioData(
+            cleanBuffer,
+            function(decodedBuffer) {
+              if (!decodedBuffer) {
+                logAudioEvent("Decoded buffer is null");
+                return;
+              }
+              
+              // Create and configure audio source
+              const source = audioContext.createBufferSource();
+              source.buffer = decodedBuffer;
+              
+              // Connect to the audio output
+              source.connect(audioContext.destination);
+              
+              // Calculate precise playback time
+              const currentTime = audioContext.currentTime;
+              const startTime = Math.max(currentTime + 0.05, lastAudioEndTime);
+              
+              // Schedule audio playback
+              source.start(startTime);
+              
+              // Set the end time for next audio chunk
+              lastAudioEndTime = startTime + decodedBuffer.duration;
+              
+              // Debug logging
+              logAudioEvent("Playing high-fidelity audio", {
+                duration: decodedBuffer.duration.toFixed(3) + 's',
+                sampleRate: decodedBuffer.sampleRate,
+                startTime: startTime.toFixed(3)
+              });
+              
+              // When audio ends, check if we should return to listening state
+              source.onended = function() {
+                if (isPlaying && currentTime > lastAudioEndTime + 1.0) {
+                  if (!speakingEndTimer) {
+                    speakingEndTimer = setTimeout(() => {
+                      if (isPlaying) {
+                        logAudioEvent("Returning to listening state");
+                        updateStatus('listening');
+                        audioPlaybackActive = false;
+                      }
+                    }, MIN_STATE_DURATION);
+                  }
+                }
+              };
+            },
+            function(error) {
+              logAudioEvent("Error decoding audio", { error });
+              
+              // Try with fixed WAV header as fallback
+              try {
+                const audioData = new Uint8Array(audioBuffer);
+                const fixedBuffer = fixWavHeader(audioData).buffer;
+                
+                audioContext.decodeAudioData(
+                  fixedBuffer,
+                  function(decodedBuffer) {
+                    if (decodedBuffer) {
+                      // Create audio source with fixed buffer
+                      const source = audioContext.createBufferSource();
+                      source.buffer = decodedBuffer;
+                      source.connect(audioContext.destination);
+                      
+                      const startTime = Math.max(audioContext.currentTime + 0.05, lastAudioEndTime);
+                      source.start(startTime);
+                      lastAudioEndTime = startTime + decodedBuffer.duration;
+                      
+                      logAudioEvent("Playing fixed audio", {
+                        duration: decodedBuffer.duration.toFixed(3) + 's',
+                        fixed: true
+                      });
+                    }
+                  },
+                  function(fixError) {
+                    logAudioEvent("Still failed to decode audio after fixing", { error: fixError });
+                  }
+                );
+              } catch (e) {
+                logAudioEvent("Failed to apply WAV header fix", { error: e.message });
+              }
+            }
+          );
+        } catch (error) {
+          logAudioEvent("Error in audio playback", { error: error.message });
+        }
+      }
+
+      function startCapture() {
+        // Update UI elements
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        isPlaying = true;
+
+        // Reset state variables
+        userStartedSpeaking = false;
+        audioPlaybackActive = false;
+        audioSequence = 0;
+        
+        updateStatus('listening');
+      }
+
+      function stopAudio(closeWebsocket) {
+          playTime = 0;
+          isPlaying = false;
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+
+        // Stop the heartbeat
+        stopHeartbeat();
+        
+        // Clear any pending timers
+        if (statusChangeTimer) {
+          clearTimeout(statusChangeTimer);
+          statusChangeTimer = null;
+        }
+        
+        if (speakingEndTimer) {
+          clearTimeout(speakingEndTimer);
+          speakingEndTimer = null;
+        }
+        
+        // Clear audio state
+        audioQueue = [];
+        isAudioPlaying = false;
+        audioPlaybackActive = false;
+        lastAudioEndTime = 0;
+        
+        updateStatus('idle');
+        
+        // Reset our state variables
+        userStartedSpeaking = false;
+        isListening = false;
+        isTranslating = false;
+        isSpeaking = false;
+
+        if (socket && closeWebsocket) {
+          socket.close();
+          socket = null;
+          }
+
+          if (scriptProcessor) {
+              scriptProcessor.disconnect();
+          }
+          if (source) {
+              source.disconnect();
+          }
+        
+        // Stop all microphone tracks
+        if (microphoneStream) {
+          microphoneStream.getTracks().forEach(track => track.stop());
+        }
+        
+        // Stop the bot server process
+        if (closeWebsocket) {
+          stopRecording().catch(error => {
+            console.error("Failed to stop bot server:", error);
+          });
+        }
+      }
+
+      function stopAudioBtnHandler() {
+          stopAudio(true);
+      }
+
+      startBtn.addEventListener('click', startAudioBtnHandler);
+      stopBtn.addEventListener('click', stopAudioBtnHandler);
+      startBtn.disabled = true;
+      stopBtn.disabled = true;
+      
+      // Initial status update
+      updateStatus('loading');
+
+      // Function to send a small audio packet to keep the connection alive
+      function sendHeartbeat() {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          // Create a very small audio packet (silence)
+          const silenceBuffer = new Int16Array(160); // Small buffer of silence
+          const silenceByteArray = new Uint8Array(silenceBuffer.buffer);
+          
+          const frame = Frame.create({
+            audio: {
+              audio: Array.from(silenceByteArray),
+              sampleRate: SAMPLE_RATE,
+              numChannels: NUM_CHANNELS
+            }
+          });
+          
+          const encodedFrame = new Uint8Array(Frame.encode(frame).finish());
+          socket.send(encodedFrame);
+          console.log("Sent heartbeat to prevent timeout");
+        }
+      }
+      
+      function startHeartbeat() {
+        // Clear any existing heartbeat
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+        }
+        
+        // Set up a new heartbeat interval
+        heartbeatInterval = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
+      }
+      
+      function stopHeartbeat() {
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
+        }
+      }
+
+      // Function to hide any error messages
+      function hideMessage() {
+        // If we have any error messaging UI, we can hide it here
+        // For now, this is just a placeholder for future error UI
+        console.log("Clearing any error messages");
+      }
+
+      // Ensure any active bot process is stopped when the page is closed
+      window.addEventListener('beforeunload', async () => {
+        if (botPid) {
+          try {
+            await fetch('/stop-bot', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ pid: botPid }),
+              // Use keepalive to ensure the request completes even if the page is unloading
+              keepalive: true
+            });
+          } catch (error) {
+            console.error('Error stopping bot on page unload:', error);
+          }
+        }
+      });
+
+      function convertFloat32ToS16PCM(float32Array) {
+          let int16Array = new Int16Array(float32Array.length);
+
+          for (let i = 0; i < float32Array.length; i++) {
+              let clampedValue = Math.max(-1, Math.min(1, float32Array[i]));
+              int16Array[i] = clampedValue < 0 ? clampedValue * 32768 : clampedValue * 32767;
+          }
+          return int16Array;
+      }
+
+      async function stopRecording() {
+        // First close the websocket connection
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.close();
+          socket = null;
+        }
+        
+        // Stop the bot process if we have a PID
+        if (botPid) {
+          try {
+            console.log('Stopping bot process with PID:', botPid);
+            const stopResponse = await fetch('/stop-bot', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ 
+                pid: botPid,
+                force: true // Request force kill
+              })
+            });
+            
+            const stopData = await stopResponse.json();
+            
+            if (stopData.success) {
+              console.log('Bot stopped successfully');
+            } else {
+              console.error('Failed to stop bot:', stopData.error);
+              // Even if normal stop fails, try force killing the port
+              await fetch('/stop-bot', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                  force_port: 8765 // Force kill anything on WebSocket port
+                })
+              });
+            }
+            
+            // Clear the PID
+            botPid = null;
+          } catch (error) {
+            console.error('Error stopping bot:', error);
+          }
+        } else {
+          // Even without PID, try to kill anything on the WebSocket port
+          try {
+            await fetch('/stop-bot', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ 
+                force_port: 8765
+              })
+            });
+          } catch (error) {
+            console.error('Error force killing port 8765:', error);
+          }
+        }
+        
+        updateStatus('idle', 'Ready');
+      }
+
+      function startAudioBtnHandler() {
+        if (isPlaying) {
+          console.log('Already recording!');
+              return;
+          }
+
+        // Disable the start button immediately
+          startBtn.disabled = true;
+        hideMessage();
+        updateStatus('connecting', 'Connecting...');
+
+        // Start recording directly with our new combined function
+        startRecording().catch(error => {
+          console.error("Failed to start recording:", error);
+          updateStatus('error', 'Failed to start');
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+        });
+      }
+
+      async function startRecording() {
+        try {
+          // Disable both buttons immediately
+          startBtn.disabled = true;
+          stopBtn.disabled = true;
+          
+          logAudioEvent("Starting recording session");
+          
+          // Reset retry count for new session
+          resetRetryCount();
+          
+          // Reset audio state
+          audioQueue = [];
+          isAudioPlaying = false;
+          playTime = 0;
+          
+          // First ensure any existing process is stopped
+          await stopRecording();
+          
+          // Wait a moment to ensure ports are cleared
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Start the bot server
+          updateStatus('connecting', 'Starting bot server...');
+          logAudioEvent("Starting bot server");
+          
+          const startResponse = await fetch('/start-bot', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              ensure_port_free: true // Request port check/cleanup
+            })
+          });
+          
+          const startData = await startResponse.json();
+          logAudioEvent("Bot server start response", startData);
+          
+          if (!startData.success) {
+            const errorMsg = `Failed to start bot: ${startData.error}`;
+            logAudioEvent("Bot server start failed", { error: startData.error });
+            updateStatus('error', errorMsg);
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            return;
+          }
+          
+          // Store the bot PID for later stopping
+          botPid = startData.pid;
+          logAudioEvent("Bot started with PID", { pid: botPid });
+          
+          // Give the bot a moment to initialize
+          updateStatus('connecting', 'Bot started, establishing WebSocket connection...');
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Initialize audio context if not already created
+          if (!audioContext) {
+            logAudioEvent("Creating new AudioContext");
+            audioContext = new (window.AudioContext || window.webkitAudioContext)({
+              sampleRate: SAMPLE_RATE
+            });
+          } else if (audioContext.state === 'suspended') {
+            // Resume audio context if it was suspended
+            logAudioEvent("Resuming suspended AudioContext", { state: audioContext.state });
+            try {
+              await audioContext.resume();
+              logAudioEvent("AudioContext resumed successfully");
+            } catch (error) {
+              logAudioEvent("Failed to resume AudioContext, recreating", { error: error.message });
+              audioContext.close().catch(() => {});
+              audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                sampleRate: SAMPLE_RATE
+              });
+            }
+          }
+          
+          logAudioEvent("AudioContext ready", { state: audioContext.state });
+          
+          // Now connect to the websocket
+          if (!socket || socket.readyState !== WebSocket.OPEN) {
+            logAudioEvent("Initializing WebSocket connection");
+            initWebSocket();
+          }
+          
+          // Play a test sound to ensure audio is working
+          try {
+            await playTestSound();
+            logAudioEvent("Test sound played successfully");
+          } catch (error) {
+            logAudioEvent("Test sound failed", { error: error.message });
+            // Continue anyway - the error might be temporary
+          }
+          
+          // Start capturing audio
+          startCapture();
+          
+        } catch (error) {
+          const errorMsg = `Error starting recording: ${error.message || error}`;
+          logAudioEvent("Recording start error", { error: errorMsg });
+          updateStatus('error', errorMsg);
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+        }
+      }
+      
+      // Function to play a test sound to ensure audio is working
+      async function playTestSound() {
+        return new Promise((resolve, reject) => {
+          try {
+            // Create a brief beep sound
+            const duration = 0.2;
+            const volume = 0.2; // Very quiet
+            
+            const audioBuffer = audioContext.createBuffer(1, audioContext.sampleRate * duration, audioContext.sampleRate);
+            const channelData = audioBuffer.getChannelData(0);
+            
+            // Generate a simple beep
+            for (let i = 0; i < channelData.length; i++) {
+              // Sine wave at 440Hz
+              channelData[i] = Math.sin(440 * 2 * Math.PI * i / audioContext.sampleRate) * volume;
+              
+              // Apply fade in/out to avoid clicks
+              const fadeTime = audioContext.sampleRate * 0.05;
+              if (i < fadeTime) {
+                channelData[i] *= i / fadeTime;
+              } else if (i > channelData.length - fadeTime) {
+                channelData[i] *= (channelData.length - i) / fadeTime;
+              }
+            }
+            
+            const source = audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioContext.destination);
+            
+            source.onended = () => {
+              logAudioEvent("Test sound completed");
+              resolve();
+            };
+            
+            source.onerror = (err) => {
+              reject(new Error("Test sound failed to play: " + err));
+            };
+            
+            source.start();
+            logAudioEvent("Test sound started");
+          } catch (error) {
+            reject(error);
+          }
+        });
+      }
+
+      function fixWavHeader(audioData) {
+        // Simple WAV header for 16-bit PCM audio at 16kHz mono
+        const wavHeader = new Uint8Array([
+          0x52, 0x49, 0x46, 0x46, // "RIFF"
+          0x00, 0x00, 0x00, 0x00, // Size (will be filled)
+          0x57, 0x41, 0x56, 0x45, // "WAVE"
+          0x66, 0x6D, 0x74, 0x20, // "fmt "
+          0x10, 0x00, 0x00, 0x00, // Subchunk1Size (16 for PCM)
+          0x01, 0x00,             // AudioFormat (1 for PCM)
+          0x01, 0x00,             // NumChannels (1 for mono)
+          0x80, 0x3E, 0x00, 0x00, // SampleRate (16000)
+          0x00, 0x7D, 0x00, 0x00, // ByteRate (16000*2)
+          0x02, 0x00,             // BlockAlign (2 bytes per sample)
+          0x10, 0x00,             // BitsPerSample (16)
+          0x64, 0x61, 0x74, 0x61, // "data"
+          0x00, 0x00, 0x00, 0x00  // Subchunk2Size (will be filled)
+        ]);
+        
+        // Calculate sizes for the header
+        const dataSize = audioData.length - 44;
+        const fileSize = dataSize + 36;
+        
+        // Fill in the sizes
+        wavHeader[4] = fileSize & 0xFF;
+        wavHeader[5] = (fileSize >> 8) & 0xFF;
+        wavHeader[6] = (fileSize >> 16) & 0xFF;
+        wavHeader[7] = (fileSize >> 24) & 0xFF;
+        
+        wavHeader[40] = dataSize & 0xFF;
+        wavHeader[41] = (dataSize >> 8) & 0xFF;
+        wavHeader[42] = (dataSize >> 16) & 0xFF;
+        wavHeader[43] = (dataSize >> 24) & 0xFF;
+        
+        // Create a new buffer with the fixed header plus the original audio data
+        const fixedBuffer = new Uint8Array(wavHeader.length + Math.max(0, dataSize));
+        fixedBuffer.set(wavHeader);
+        
+        // Copy audio data after the header (if there is any)
+        if (dataSize > 0) {
+            fixedBuffer.set(audioData.slice(44), 44);
+        }
+        
+        return fixedBuffer;
+      }
+
+      // Audio diagnostics and error tracking
+      function logAudioEvent(event, details = {}) {
+        const timestamp = new Date().toISOString();
+        console.log(`[AUDIO ${timestamp}] ${event}`, details);
+      }
+
+      // Add audio context recovery mechanism
+      function ensureAudioContextActive() {
+        if (audioContext && audioContext.state === 'suspended') {
+          console.log('Audio context was suspended. Attempting to resume...');
+          audioContext.resume().then(() => {
+            console.log('Audio context resumed successfully');
+          }).catch(err => {
+            console.error('Failed to resume audio context:', err);
+          });
+          return false;
+        }
+        return true;
+      }
+      
+      // Function to validate audio quality (for debugging purposes)
+      function isValidAudio(audioBuffer) {
+        // Check if we actually have data
+        if (!audioBuffer || audioBuffer.byteLength === 0) {
+          logAudioEvent("Invalid audio buffer", { size: audioBuffer?.byteLength || 0 });
+          return false;
+        }
+        
+        return true;
+      }
+    </script>
+  </body>
+
+</html>
