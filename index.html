@@ -349,12 +349,12 @@
       </div>
     </div>
 
-    <div style="text-align: center; margin: 1rem auto;">
+    <!-- <div style="text-align: center; margin: 1rem auto;">
       <a href="/logs.html" target="_blank" style="color: var(--gray-text); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: color 0.3s ease;">
         <i class="fas fa-file-alt"></i>
         View Bot Logs
       </a>
-    </div>
+    </div> -->
 
     <footer>
       Powered by Nitrane Systems
@@ -556,8 +556,8 @@
       }
 
       function initWebSocket() {
-        console.log("Connecting to WebSocket at ws://localhost:8765");
-        socket = new WebSocket('ws://localhost:8765');
+        console.log("Connecting to WebSocket at ws://13.60.48.79:8765");
+        socket = new WebSocket('ws://13.60.48.79:8765');
           // This is so `event.data` is already an ArrayBuffer.
         socket.binaryType = 'arraybuffer';
 
