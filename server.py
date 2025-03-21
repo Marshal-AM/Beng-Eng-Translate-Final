@@ -133,15 +133,17 @@ class ServerRequestHandler(http.server.SimpleHTTPRequestHandler):
                 return
             
             # Check if .env file exists (for OpenAI API key)
-            env_path = SCRIPT_DIR / ".env"
-            if not env_path.exists():
-                print(f".env file not found at {env_path}")
-                self._set_response_headers()
-                self.wfile.write(json.dumps({
-                    "success": False, 
-                    "error": f".env file not found at {env_path}. Please create this file with your OpenAI API key."
-                }).encode())
-                return
+            if not os.environ.get("OPENAI_API_KEY"):
+                # Only check for .env file if the key isn't in environment variables
+                env_path = SCRIPT_DIR / ".env"
+                if not env_path.exists():
+                    print(f".env file not found at {env_path} and OPENAI_API_KEY environment variable not set")
+                    self._set_response_headers()
+                    self.wfile.write(json.dumps({
+                        "success": False, 
+                        "error": f"OpenAI API key not found. Please either set the OPENAI_API_KEY environment variable or create a .env file with your OpenAI API key."
+                    }).encode())
+                    return
 
             # Start the bot.py process
             print(f"Starting bot.py from {SCRIPT_DIR}")
