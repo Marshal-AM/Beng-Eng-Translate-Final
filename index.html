@@ -556,8 +556,8 @@
       }
 
       function initWebSocket() {
-        console.log("Connecting to WebSocket at ws://localhost:8765");
-        socket = new WebSocket('ws://localhost:8765');
+        console.log("Connecting to WebSocket at wss://13.60.48.79:8765");
+        socket = new WebSocket('wss://13.60.48.79:8765');
           // This is so `event.data` is already an ArrayBuffer.
         socket.binaryType = 'arraybuffer';
 
@@ -595,6 +595,18 @@
         // Enable stop button and disable start button
         startBtn.disabled = true;
         stopBtn.disabled = false;
+
+        // Set isPlaying flag explicitly
+        console.log("Setting isPlaying to true in handleWebSocketOpen");
+        isPlaying = true;
+
+        // Force audio context to resume if needed
+        if (audioContext && audioContext.state !== 'running') {
+          console.log("Resuming AudioContext in WebSocket open handler");
+          audioContext.resume().catch(err => {
+            console.error("Failed to resume AudioContext:", err);
+          });
+        }
 
         navigator.mediaDevices.getUserMedia({
               audio: {
@@ -642,159 +654,176 @@
           const arrayBuffer = event.data;
         logAudioEvent("Received WebSocket message", { 
           size: arrayBuffer.byteLength,
-          isPlaying: isPlaying
+          isPlaying: isPlaying,
+          audioContextState: audioContext ? audioContext.state : 'none'
         });
         
-          if (isPlaying) {
-          try {
-            // Decode the protobuf frame
-            const parsedFrame = Frame.decode(new Uint8Array(arrayBuffer));
-            
-            // Verify we have audio data
-            if (!parsedFrame?.audio || !parsedFrame.audio.audio) {
-              logAudioEvent("No audio data in frame");
-              return;
-            }
-            
-            audioSequence++;
-            
-            // If we received an audio message back, it means translation is happening
-            // First time we get a response, switch from listening to translating
-            if (!userStartedSpeaking) {
-              updateStatus('translating');
-              userStartedSpeaking = true;
-            }
-            
-            // Update status to speaking if not already
-            if (!audioPlaybackActive) {
-              updateStatus('speaking');
-              audioPlaybackActive = true;
-            }
-            
-            // Extract the audio data directly from the protobuf
-            const audioData = new Uint8Array(parsedFrame.audio.audio);
-            
-            // Play the audio with high fidelity
-            playHighFidelityAudio(audioData.buffer);
-            
-          } catch (error) {
-            logAudioEvent("Error processing message", { error: error.message });
+        // Always process audio regardless of isPlaying flag
+        try {
+          // Decode the protobuf frame
+          const parsedFrame = Frame.decode(new Uint8Array(arrayBuffer));
+          
+          // Verify we have audio data
+          if (!parsedFrame?.audio || !parsedFrame.audio.audio) {
+            logAudioEvent("No audio data in frame");
+            return;
           }
+          
+          audioSequence++;
+          
+          // If we received an audio message back, it means translation is happening
+          // First time we get a response, switch from listening to translating
+          if (!userStartedSpeaking) {
+            updateStatus('translating');
+            userStartedSpeaking = true;
+          }
+          
+          // Update status to speaking if not already
+          if (!audioPlaybackActive) {
+            updateStatus('speaking');
+            audioPlaybackActive = true;
+          }
+          
+          // Extract the audio data directly from the protobuf
+          const audioData = new Uint8Array(parsedFrame.audio.audio);
+          
+          // Play the audio with high fidelity
+          playHighFidelityAudio(audioData.buffer);
+          
+        } catch (error) {
+          logAudioEvent("Error processing message", { error: error.message });
         }
       }
       
-      // Simple and direct high-quality audio playback
       function playHighFidelityAudio(audioBuffer) {
         try {
-          // Make sure the audio context is running
+          // Make sure the audio context is running - try to resume before proceeding
           if (audioContext.state !== 'running') {
-            audioContext.resume().catch(err => {
+            logAudioEvent("AudioContext not running, attempting to resume...");
+            audioContext.resume().then(() => {
+              logAudioEvent("AudioContext resumed successfully, now processing audio");
+              processDecodedAudio(audioBuffer);
+            }).catch(err => {
               logAudioEvent("Failed to resume audio context", { error: err.message });
+              // Try to process anyway
+              processDecodedAudio(audioBuffer);
             });
+          } else {
+            processDecodedAudio(audioBuffer);
           }
-          
-          // Create a new ArrayBuffer to avoid any potential memory issues
-          const cleanBuffer = audioBuffer.slice(0);
-          
-          // Decode the audio data directly
-          audioContext.decodeAudioData(
-            cleanBuffer,
-            function(decodedBuffer) {
-              if (!decodedBuffer) {
-                logAudioEvent("Decoded buffer is null");
-                return;
-              }
-              
-              // Create and configure audio source
-              const source = audioContext.createBufferSource();
-              source.buffer = decodedBuffer;
-              
-              // Connect to the audio output
-              source.connect(audioContext.destination);
-              
-              // Calculate precise playback time
-              const currentTime = audioContext.currentTime;
-              const startTime = Math.max(currentTime + 0.05, lastAudioEndTime);
-              
-              // Schedule audio playback
-              source.start(startTime);
-              
-              // Set the end time for next audio chunk
-              lastAudioEndTime = startTime + decodedBuffer.duration;
-              
-              // Debug logging
-              logAudioEvent("Playing high-fidelity audio", {
-                duration: decodedBuffer.duration.toFixed(3) + 's',
-                sampleRate: decodedBuffer.sampleRate,
-                startTime: startTime.toFixed(3)
-              });
-              
-              // When audio ends, check if we should return to listening state
-              source.onended = function() {
-                if (isPlaying && currentTime > lastAudioEndTime + 1.0) {
-                  if (!speakingEndTimer) {
-                    speakingEndTimer = setTimeout(() => {
-                      if (isPlaying) {
-                        logAudioEvent("Returning to listening state");
-                        updateStatus('listening');
-                        audioPlaybackActive = false;
-                      }
-                    }, MIN_STATE_DURATION);
-                  }
-                }
-              };
-            },
-            function(error) {
-              logAudioEvent("Error decoding audio", { error });
-              
-              // Try with fixed WAV header as fallback
-              try {
-                const audioData = new Uint8Array(audioBuffer);
-                const fixedBuffer = fixWavHeader(audioData).buffer;
-                
-                audioContext.decodeAudioData(
-                  fixedBuffer,
-                  function(decodedBuffer) {
-                    if (decodedBuffer) {
-                      // Create audio source with fixed buffer
-                      const source = audioContext.createBufferSource();
-                      source.buffer = decodedBuffer;
-                      source.connect(audioContext.destination);
-                      
-                      const startTime = Math.max(audioContext.currentTime + 0.05, lastAudioEndTime);
-                      source.start(startTime);
-                      lastAudioEndTime = startTime + decodedBuffer.duration;
-                      
-                      logAudioEvent("Playing fixed audio", {
-                        duration: decodedBuffer.duration.toFixed(3) + 's',
-                        fixed: true
-                      });
-                    }
-                  },
-                  function(fixError) {
-                    logAudioEvent("Still failed to decode audio after fixing", { error: fixError });
-                  }
-                );
-              } catch (e) {
-                logAudioEvent("Failed to apply WAV header fix", { error: e.message });
-              }
-            }
-          );
         } catch (error) {
           logAudioEvent("Error in audio playback", { error: error.message });
         }
+      }
+      
+      function processDecodedAudio(audioBuffer) {
+        // Create a new ArrayBuffer to avoid any potential memory issues
+        const cleanBuffer = audioBuffer.slice(0);
+        
+        // Decode the audio data directly
+        audioContext.decodeAudioData(
+          cleanBuffer,
+          function(decodedBuffer) {
+            if (!decodedBuffer) {
+              logAudioEvent("Decoded buffer is null");
+              return;
+            }
+            
+            // Create and configure audio source
+            const source = audioContext.createBufferSource();
+            source.buffer = decodedBuffer;
+            
+            // Connect to the audio output
+            source.connect(audioContext.destination);
+            
+            // Calculate precise playback time - add slightly more delay for EC2
+            const currentTime = audioContext.currentTime;
+            const startTime = Math.max(currentTime + 0.1, lastAudioEndTime);
+            
+            // Schedule audio playback
+            source.start(startTime);
+            
+            // Set the end time for next audio chunk
+            lastAudioEndTime = startTime + decodedBuffer.duration;
+            
+            // Debug logging
+            logAudioEvent("Playing high-fidelity audio", {
+              duration: decodedBuffer.duration.toFixed(3) + 's',
+              sampleRate: decodedBuffer.sampleRate,
+              startTime: startTime.toFixed(3),
+              audioContextTime: currentTime.toFixed(3)
+            });
+            
+            // When audio ends, check if we should return to listening state
+            source.onended = function() {
+              if (isPlaying && currentTime > lastAudioEndTime + 1.0) {
+                if (!speakingEndTimer) {
+                  speakingEndTimer = setTimeout(() => {
+                    if (isPlaying) {
+                      logAudioEvent("Returning to listening state");
+                      updateStatus('listening');
+                      audioPlaybackActive = false;
+                    }
+                  }, MIN_STATE_DURATION);
+                }
+              }
+            };
+          },
+          function(error) {
+            logAudioEvent("Error decoding audio", { error });
+            
+            // Try with fixed WAV header as fallback
+            try {
+              const audioData = new Uint8Array(audioBuffer);
+              const fixedBuffer = fixWavHeader(audioData).buffer;
+              
+              audioContext.decodeAudioData(
+                fixedBuffer,
+                function(decodedBuffer) {
+                  if (decodedBuffer) {
+                    // Create audio source with fixed buffer
+                    const source = audioContext.createBufferSource();
+                    source.buffer = decodedBuffer;
+                    source.connect(audioContext.destination);
+                    
+                    const startTime = Math.max(audioContext.currentTime + 0.1, lastAudioEndTime);
+                    source.start(startTime);
+                    lastAudioEndTime = startTime + decodedBuffer.duration;
+                    
+                    logAudioEvent("Playing fixed audio", {
+                      duration: decodedBuffer.duration.toFixed(3) + 's',
+                      fixed: true
+                    });
+                  }
+                },
+                function(fixError) {
+                  logAudioEvent("Still failed to decode audio after fixing", { error: fixError });
+                }
+              );
+            } catch (e) {
+              logAudioEvent("Failed to apply WAV header fix", { error: e.message });
+            }
+          }
+        );
       }
 
       function startCapture() {
         // Update UI elements
         startBtn.disabled = true;
         stopBtn.disabled = false;
+        console.log("Setting isPlaying to true in startCapture");
         isPlaying = true;
 
         // Reset state variables
         userStartedSpeaking = false;
         audioPlaybackActive = false;
         audioSequence = 0;
+        
+        // Ensure audio context is running
+        if (audioContext && audioContext.state !== 'running') {
+          console.log("Resuming audio context in startCapture");
+          audioContext.resume().catch(err => console.error("Error resuming:", err));
+        }
         
         updateStatus('listening');
       }
@@ -1091,6 +1120,14 @@
             audioContext = new (window.AudioContext || window.webkitAudioContext)({
               sampleRate: SAMPLE_RATE
             });
+            
+            // Add global event listeners for user interaction to resume AudioContext
+            document.addEventListener('click', function resumeOnClick() {
+              if (audioContext && audioContext.state === 'suspended') {
+                logAudioEvent("Resuming AudioContext on user click");
+                audioContext.resume().catch(err => console.error("Resume error:", err));
+              }
+            });
           } else if (audioContext.state === 'suspended') {
             // Resume audio context if it was suspended
             logAudioEvent("Resuming suspended AudioContext", { state: audioContext.state });
@@ -1120,8 +1157,22 @@
             logAudioEvent("Test sound played successfully");
           } catch (error) {
             logAudioEvent("Test sound failed", { error: error.message });
-            // Continue anyway - the error might be temporary
+            // Try to force unlock audio context with a silent sound
+            try {
+              const silentBuffer = audioContext.createBuffer(1, 1, audioContext.sampleRate);
+              const source = audioContext.createBufferSource();
+              source.buffer = silentBuffer;
+              source.connect(audioContext.destination);
+              source.start();
+              logAudioEvent("Played silent sound to unlock audio context");
+            } catch (err) {
+              logAudioEvent("Failed to play silent sound", { error: err.message });
+            }
           }
+          
+          // Set isPlaying flag directly
+          console.log("Setting isPlaying to true in startRecording");
+          isPlaying = true;
           
           // Start capturing audio
           startCapture();
