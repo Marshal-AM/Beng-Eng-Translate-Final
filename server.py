@@ -132,18 +132,16 @@ class ServerRequestHandler(http.server.SimpleHTTPRequestHandler):
                 }).encode())
                 return
             
-            # Check for OpenAI API key in environment variables or .env file
-            if not os.environ.get("OPENAI_API_KEY"):
-                # Only check for .env file if the key isn't in environment variables
-                env_path = SCRIPT_DIR / ".env"
-                if not env_path.exists():
-                    print(f".env file not found at {env_path} and OPENAI_API_KEY environment variable not set")
-                    self._set_response_headers()
-                    self.wfile.write(json.dumps({
-                        "success": False, 
-                        "error": f"OpenAI API key not found. Please either set the OPENAI_API_KEY environment variable or create a .env file with your OpenAI API key."
-                    }).encode())
-                    return
+            # Check if .env file exists (for OpenAI API key)
+            env_path = SCRIPT_DIR / ".env"
+            if not env_path.exists():
+                print(f".env file not found at {env_path}")
+                self._set_response_headers()
+                self.wfile.write(json.dumps({
+                    "success": False, 
+                    "error": f".env file not found at {env_path}. Please create this file with your OpenAI API key."
+                }).encode())
+                return
 
             # Start the bot.py process
             print(f"Starting bot.py from {SCRIPT_DIR}")
@@ -347,9 +345,8 @@ def main():
         handler = ServerRequestHandler
         
         print(f"Starting server on port {port}...")
-        with socketserver.TCPServer(("0.0.0.0", port), handler) as httpd:
-            print(f"Server started at http://0.0.0.0:{port}")
-            print(f"For external access, use: http://13.60.48.79:{port}")
+        with socketserver.TCPServer(("", port), handler) as httpd:
+            print(f"Server started at http://localhost:{port}")
             httpd.serve_forever()
     except KeyboardInterrupt:
         print("Server stopped by user.")

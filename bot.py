@@ -175,7 +175,7 @@ async def main():
             vad_audio_passthrough=True,
             session_timeout=60 * 3,  # 3 minutes
         ),
-        host="0.0.0.0",  # Listen on all interfaces to allow external connections
+        host="localhost",  # Explicitly set the host
         port=8765,        # Explicitly set the port
     )
 
@@ -185,7 +185,7 @@ async def main():
 
     # Configure service
     stt = GoogleSTTService(
-        credentials_path="/Users/sam/Developer/pipecat-main/examples/websocket-server/creds.json",
+        credentials_path="creds.json",
         location="eu",
         params=GoogleSTTService.InputParams(
             languages=Language.EN_IN,
@@ -197,7 +197,7 @@ async def main():
 
     # Use a Spanish voice for the translator
     tts = GoogleTTSService(
-        credentials_path="/Users/sam/Developer/pipecat-main/examples/websocket-server/creds.json",
+        credentials_path="creds.json",
         voice_id="hi-IN-Standard-A",
         params=GoogleTTSService.InputParams(
             language=Language.HI,

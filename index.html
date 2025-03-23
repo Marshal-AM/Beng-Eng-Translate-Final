@@ -317,14 +317,14 @@
         <div class="logo">
           <img src="logo.jpeg" alt="Sensei Translator Logo - Red cube design">
         </div>
-        <h1>Sensei Translator</h1>
-        <p class="subtitle">Speak in Bengali</p>
+        <h1>Sensei Translate</h1>
+        <p class="subtitle">Speak in English, Hear it in Bengali</p>
       </header>
 
       <div class="language-display">
-        <div class="language-pill from-lang">Bengali</div>
+        <div class="language-pill from-lang">English</div>
         <i class="fas fa-arrow-right" style="color: var(--gray-text);"></i>
-        <div class="language-pill to-lang">English</div>
+        <div class="language-pill to-lang">Bengali</div>
       </div>
 
       <div id="statusIndicator" class="status-indicator idle">
@@ -556,8 +556,8 @@
       }
 
       function initWebSocket() {
-        console.log("Connecting to WebSocket at ws://13.60.48.79:8765");
-        socket = new WebSocket('ws://13.60.48.79:8765');
+        console.log("Connecting to WebSocket at ws://localhost:8765");
+        socket = new WebSocket('ws://localhost:8765');
           // This is so `event.data` is already an ArrayBuffer.
         socket.binaryType = 'arraybuffer';
 
