@@ -162,8 +162,8 @@ class SessionTimeoutHandler:
 
 async def main():
     # Define source and target languages for translation
-    in_language = "English"
-    out_language = "Bengali"
+    in_language = "Bengali"
+    out_language = "English"
     
     transport = WebsocketServerTransport(
         params=WebsocketServerParams(
@@ -188,7 +188,7 @@ async def main():
         credentials_path="creds.json",
         location="eu",
         params=GoogleSTTService.InputParams(
-            languages=Language.EN_IN,
+            languages=Language.BN_BD,
             model="latest_long",
             enable_interim_results=True,
             enable_automatic_punctuation=False,
@@ -198,9 +198,9 @@ async def main():
     # Use a Spanish voice for the translator
     tts = GoogleTTSService(
         credentials_path="creds.json",
-        voice_id="hi-IN-Standard-A",
+        voice_id="en-IN-Standard-A",
         params=GoogleTTSService.InputParams(
-            language=Language.HI,
+            language=Language.EN_IN,
             gender="female",
         )
     )
